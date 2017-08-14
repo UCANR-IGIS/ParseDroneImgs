@@ -14,7 +14,7 @@ Folder names for the flights conform to the recommended directory structure desc
 
 ## Usage
 
-The provides the following options
+The script provides the following options
 
 - whether to create subdirectories for each flight
 - whether to move or copy files into flight subdirector
@@ -69,10 +69,10 @@ After a lot of trial and error (mostly error), the instructions in the first lin
 
 This script also requires a command line utility called exiftool.
 
-a. Download from <http://www.sno.phy.queensu.ca/~phil/exiftool/>
-b. Extract the *exiftool(-k).exe* file
-c. Rename *exiftool(-k).exe* to *exiftool.exe*
-d. Move *exiftool.exe* to a directory on the system PATH (like c:\windows)
+1. Download from <http://www.sno.phy.queensu.ca/~phil/exiftool/>
+1. Extract the *exiftool(-k).exe* file
+1. Rename *exiftool(-k).exe* to *exiftool.exe*
+1. Move *exiftool.exe* to a directory on the system PATH (like c:\windows)
 
 ## Launching the script
 
@@ -86,7 +86,7 @@ c:\> python parse-uav-imgs.py 'C:\Drone_Projects\ElkusRanch\2017-06-19_X5images\
 
 ### Send To menu (Windows)
 
-An easier way to launch the script is from the 'Send To' menu that appears when you right-click on a folder in the Windows Explorer. To do this, create a file in Notepad with the following three lines (changing the last line to the actual directory where you save the py file):
+An easier way to launch the script is from the 'Send To' menu that appears when you right-click on a folder in the Windows Explorer. To do this, create a file in Notepad with the following three lines (change the last line to the actual directory where you save the py file):
 
 ```
 @echo off
