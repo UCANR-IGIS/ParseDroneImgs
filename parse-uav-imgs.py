@@ -1,3 +1,6 @@
+## Sort and Map UAV Images
+## (c) Andy Lyons, 2017
+
 ## Passed a directory containing geotagged images, this script will 
 ## i) Put the images into separate subfolders for each flight
 ## ii) Create a point shapefile of the centroids of each image
@@ -8,6 +11,7 @@
 ## python parse-uav-imgs.py 'C:\Pix4D\HREC\Watershed1\Data\2017-01-16_X5\Flight02_1532_1540_400ft'             #X5 
 ## python parse-uav-imgs.py 'C:\Pix4D\HREC\Watershed1\Data\2017-01-17_Seq\Flight01_1321_1328_400ft\RGB'        #Sequoia RGB
 ## python parse-uav-imgs.py 'C:\Pix4D\HREC\Watershed1\Data\2017-01-17_Seq\Flight01_1321_1328_400ft\Multispec'  #Sequoia MSS 
+## python parse-uav-imgs.py 'C:\Pix4D\HREC\HQ-Pasture\Data\HQPasture\201708017_X3b'  #X3
 
 ## Set default options
 fnCSV = "exif_info.csv"
@@ -18,11 +22,14 @@ m2s_Preview = True
 m2s_MoveCopy = "move"
 shpCreateYN = True
 m2s_FirstFlightNum = 1
+m2s_SubdirTemplate = "Flt{FltNum}_{StartTime}_{EndTime}"
 shape_file_suffix = "pts.shp"
 
 #Camera type no longer needed. The GoPro, X5, and Seq all share a set of tags
 #camera_type = "GoPro"
-#camera_type = "X5"      
+#camera_type = "X5"
+#If needed, the script could try to auto-detect the type of camera (and hence the EXIF tags used)
+#ZenMuse X5 model: FC550
 
 ## Import modules
 import os, sys
@@ -179,30 +186,41 @@ while ShowMenuYN:
             start_idx = 0
             for i in range(len(file_dt)):
                 if i == (len(file_dt)-1):
-                    subdir = "Flt" +  "%02d" % (len(flights) + m2s_FirstFlightNum) + "_" + file_dt[start_idx][IDX_DTOBJ].strftime('%H%M') + "_" + file_dt[i][IDX_DTOBJ].strftime('%H%M')
+                    #subdir = "Flt" +  "%02d" % (len(flights) + m2s_FirstFlightNum) + "_" + file_dt[start_idx][IDX_DTOBJ].strftime('%H%M') + "_" + file_dt[i][IDX_DTOBJ].strftime('%H%M')
+                    subdir = m2s_SubdirTemplate                    
+                    subdir = subdir.replace("{FltNum}", "%02d" % (len(flights) + m2s_FirstFlightNum))
+                    subdir = subdir.replace("{StartTime}", file_dt[start_idx][IDX_DTOBJ].strftime('%H%M'))
+                    subdir = subdir.replace("{EndTime}", file_dt[i][IDX_DTOBJ].strftime('%H%M'))
                     flights.append([start_idx, i, subdir])
-                else:
-                    if timediffs[i] >= thresh_abs:
-                        ## Start a new flight
-                        subdir = "Flt" +  "%02d" % (len(flights) + m2s_FirstFlightNum) + "_" + file_dt[start_idx][IDX_DTOBJ].strftime('%H%M') + "_" + file_dt[i-1][IDX_DTOBJ].strftime('%H%M')
-                        flights.append([start_idx, i-1, subdir])
-                        start_idx = i
+                elif timediffs[i] >= thresh_abs:
+                    ## Start a new flight
+                    #subdir = "Flt" +  "%02d" % (len(flights) + m2s_FirstFlightNum) + "_" + file_dt[start_idx][IDX_DTOBJ].strftime('%H%M') + "_" + file_dt[i-1][IDX_DTOBJ].strftime('%H%M')
+                    subdir = m2s_SubdirTemplate                    
+                    subdir = subdir.replace("{FltNum}", "%02d" % (len(flights) + m2s_FirstFlightNum))
+                    subdir = subdir.replace("{StartTime}", file_dt[start_idx][IDX_DTOBJ].strftime('%H%M'))
+                    subdir = subdir.replace("{EndTime}", file_dt[i-1][IDX_DTOBJ].strftime('%H%M'))
+                    flights.append([start_idx, i-1, subdir])
+                    start_idx = i
         else:
             # Just one 'flight'
             flights = [[0, len(file_dt)-1, "all"]]
         ComputeFlightGroupsYN = False
 
     ## Display menu
-    print "\nMin, Median, and Max sampling interval (seconds): " + Style.BRIGHT + Fore.GREEN + str(min(timediffs[1:])) + ", " + str(median(timediffs)) + ", " + str(max(timediffs[1:])) + Style.RESET_ALL
-    print "Move files into sub-" + Style.BRIGHT + Fore.CYAN + "d" + Style.RESET_ALL + "irectories by flight: " + Style.BRIGHT + Fore.GREEN + str(m2s_YN) + Style.RESET_ALL
+    print "\nNum images found: " + str(len(file_dt)) 
+    print "Min, Median, and Max sampling interval (seconds): " + Style.BRIGHT + Fore.GREEN + str(min(timediffs[1:])) + ", " + str(median(timediffs)) + ", " + str(max(timediffs[1:])) + Style.RESET_ALL
+    print "Move files into sub-" + Style.BRIGHT + Fore.CYAN + "D" + Style.RESET_ALL + "irectories by flight: " + Style.BRIGHT + Fore.GREEN + str(m2s_YN) + Style.RESET_ALL
     if m2s_YN:
         print "Flight Parsing Options:"
-        print "  Threshhold " + Style.BRIGHT + Fore.CYAN + "u" + Style.RESET_ALL + "nits: " + Style.BRIGHT + Fore.GREEN + m2s_ThreshUnits + Style.RESET_ALL
-        print "  Threshhold " + Style.BRIGHT + Fore.CYAN + "v" + Style.RESET_ALL + "al: " + Style.BRIGHT + Fore.GREEN + str(m2s_ThreshVal) + Style.RESET_ALL
+        print "  Threshhold " + Style.BRIGHT + Fore.CYAN + "U" + Style.RESET_ALL + "nits: " + Style.BRIGHT + Fore.GREEN + m2s_ThreshUnits + Style.RESET_ALL
+        print "  Threshhold " + Style.BRIGHT + Fore.CYAN + "V" + Style.RESET_ALL + "al: " + Style.BRIGHT + Fore.GREEN + str(m2s_ThreshVal) + Style.RESET_ALL
         print "    --> will create a new flight every time a gap is found of at least " + str(thresh_abs) + " seconds"
+        print "  Subdirectory name " + Style.BRIGHT + Fore.CYAN + "T" + Style.RESET_ALL + "emplate: " + m2s_SubdirTemplate
         print "  " + Style.BRIGHT + Fore.CYAN + "F" + Style.RESET_ALL + "irst flight number: " + str(m2s_FirstFlightNum)
+        print "  Flight directory(s):" 
         for i in range(len(flights)):
-            print "   - Flt" +  "%02d" % (i + m2s_FirstFlightNum) + ": " + file_dt[flights[i][0]][IDX_DTOBJ].strftime('%H:%M:%S') + " to " + file_dt[flights[i][1]][IDX_DTOBJ].strftime('%H:%M:%S') + " (" + str(flights[i][1] - flights[i][0] + 1) + " images)"
+            print "   - " + flights[i][2]  
+            #print "   - Flt" +  "%02d" % (i + m2s_FirstFlightNum) + ": " + file_dt[flights[i][0]][IDX_DTOBJ].strftime('%H:%M:%S') + " to " + file_dt[flights[i][1]][IDX_DTOBJ].strftime('%H:%M:%S') + " (" + str(flights[i][1] - flights[i][0] + 1) + " images)"
         print "  " + Style.BRIGHT + Fore.CYAN + "M" + Style.RESET_ALL + "ove or " + Style.BRIGHT + Fore.CYAN + "c" + Style.RESET_ALL + "opy: " + Style.BRIGHT + Fore.GREEN + m2s_MoveCopy + Style.RESET_ALL
     print "Create point " + Style.BRIGHT + Fore.CYAN + "S" + Style.RESET_ALL + "hapefiles: " + Style.BRIGHT + Fore.GREEN + str(shpCreateYN) + Style.RESET_ALL
 
@@ -222,6 +240,11 @@ while ShowMenuYN:
         m2s_MoveCopy = "move"
     elif contYN.lower() == "s":
         shpCreateYN = not shpCreateYN
+    elif contYN.lower() == "t":
+        print "The following pieces of the subdirectory name template will be replaced with actual values:"
+        print "{FltNum}, {StartTime}, {EndTime}"
+        m2s_SubdirTemplate = raw_input("New subdirectory name template: ")
+        ComputeFlightGroupsYN = True
     elif contYN.lower() == "f":
         m2s_FirstFlightNum = int(raw_input("First flight number: "))
         ComputeFlightGroupsYN = True
@@ -235,7 +258,7 @@ while ShowMenuYN:
 if m2s_YN:
     overwrite_subdir = "u"
     for i in range(len(flights)):
-        #fnSubDir = "Flt" +  "%02d" % (i + m2s_FirstFlightNum) + "_" + file_dt[flights[i][0]][IDX_DTOBJ].strftime('%H%M') + "_" + file_dt[flights[i][1]][IDX_DTOBJ].strftime('%H%M')
+        #fnSubDir = "Flt" +  "%02d" % (i + m2s_FirstFlightNum) + "_" + file_dt[flights[i][0]][IDX_DTOBJ].strftime('%H%M') + "_" + file_dt[flights[i][1]][IDX_DTOBJ].strftime('%H%M')        
         fnSubDir = flights[i][2]
         fnSubDirFullPath = os.path.join(fnInputDir, fnSubDir)
         ##print fnSubDirFullPath + " exists: " + str(os.path.exists(fnSubDirFullPath))
@@ -339,10 +362,11 @@ if gdalYN and shpCreateYN:
 print Style.BRIGHT + Fore.YELLOW + "Done" + Style.RESET_ALL
 
 print "\nStill to come:"
+print "  - make the filename field in the attrbitute table a hotlink to the file (?)"
 print "  - consider adding 'Make' and 'Model' tags to shapefile attribute table"
 print "  - test that the argument passed is an existing directory"
 print "  - test what happens if input dir has spaces"
+print "  * make a template for subfolder names, e.g., {date}_Flt{flight-num}_{flight-start-time}_{flight-end-time}_other-stuff"
 
+##Pause the screen before closing (helpful when you run it from the 'Send To' menu)
 os.system("pause")
-
-
