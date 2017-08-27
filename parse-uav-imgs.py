@@ -5,6 +5,10 @@
 ## i) Put the images into separate subfolders for each flight
 ## ii) Create a point shapefile of the centroids of each image
 
+## Usage tips
+## Be sure to double-quote around any directory names that contains spaces. E.g.,  
+## python \GitHub\ParseDroneImgs\parse-uav-imgs.py 'C:\Temp\Thermal Dronnies'
+
 ## To run, open a command window and type:
 ## cd C:\GitHub\ParseDroneImgs
 ## python parse-uav-imgs.py 'C:\Pix4D\Elkus_Ranch\Data\20170419_Hero4\Flight01_1320_1321_120ft_WaterTower\Geotagged\GeotaggedWithExif'     #GoPro
@@ -12,6 +16,8 @@
 ## python parse-uav-imgs.py 'C:\Pix4D\HREC\Watershed1\Data\2017-01-17_Seq\Flight01_1321_1328_400ft\RGB'        #Sequoia RGB
 ## python parse-uav-imgs.py 'C:\Pix4D\HREC\Watershed1\Data\2017-01-17_Seq\Flight01_1321_1328_400ft\Multispec'  #Sequoia MSS 
 ## python parse-uav-imgs.py 'C:\Pix4D\HREC\HQ-Pasture\Data\HQPasture\201708017_X3b'  #X3
+## python parse-uav-imgs.py 'C:\Pix4D\HREC\Watershed2\Data\2017-08-18_X3\Flight02_Imgs'
+## python \GitHub\ParseDroneImgs\parse-uav-imgs.py "C:\Temp\Thermal Dronnies"
 
 ## Set default options
 fnCSV = "exif_info.csv"
@@ -23,7 +29,7 @@ m2s_MoveCopy = "move"
 shpCreateYN = True
 m2s_FirstFlightNum = 1
 m2s_SubdirTemplate = "Flt{FltNum}_{StartTime}_{EndTime}"
-shape_file_suffix = "pts.shp"
+shape_file_suffix = "_pts.shp"
 
 #Camera type no longer needed. The GoPro, X5, and Seq all share a set of tags
 #camera_type = "GoPro"
@@ -93,8 +99,22 @@ def median(lst, omit_zeros=True):
     else:
         return sum(sorted(lst)[n//2-1:n//2+1])/2.0
 
+## The first (and only) argument should be a path
 fnInputDir = sys.argv[1]
 fnInputDir = fnInputDir.strip('\'"')    # get rid of single and double quotes
+fnInputLastDir = os.path.basename(os.path.normpath(fnInputDir))
+print "Last dir = " + fnInputLastDir
+
+#print "cleaned fnInputDir = " + fnInputDir
+#print "isdir = " + str(os.path.isdir(fnInputDir))
+#print "exists = " + str(os.path.isdir(fnInputDir))
+
+## Make sure the directory exists
+if not os.path.isdir(fnInputDir):
+    print fnInputDir + " is not a directory."
+    print "If launching from the command line, be sure to put double-quotes around directory names that conatain spaces."
+    os.system("pause")
+    quit()
 
 ## Define tags in the image header (these work with all cameras tested so far)
 tagDateTimeOrig = "DateTimeOriginal"
@@ -119,7 +139,7 @@ tagsAllForCmd = "-" + tagDateTimeOrig + " -" + tagLat + " -" + tagLong
 
 print "Running exiftool on images in " + fnInputDir + "..."
 fnCSV = os.path.join(fnInputDir, fnCSV)
-strCmd = "exiftool -filename " + tagsAllForCmd + " -n -csv " + fnInputDir + " > " + fnCSV
+strCmd = "exiftool -filename " + tagsAllForCmd + " -n -csv \"" + fnInputDir + "\" > \"" + fnCSV + "\""
 
 #strCmd = "exiftool -filename -gpsdatestamp -gpstimestamp -gpslatitude -gpslongitude -n -csv " + fnInputDir + " > " + fnCSV
 #strCmd = "exiftool -filename " + tagsAllForCmd + " -n -csv " + fnInputDir + " > " + fnCSV
@@ -147,8 +167,12 @@ for fld in required_flds:
 file_dt = []
 for row in csvReader:
     # SourceFile, FileName, DateTimeOriginal, GPSLatitude, GPSLongitude
-    dtobj = datetime.strptime(row[tagDateTimeOrig], '%Y:%m:%d %H:%M:%S')
-    file_dt.append((row['FileName'], dtobj, row[tagLong], row[tagLat]))    #add a tuple
+    try:
+        dtobj = datetime.strptime(row[tagDateTimeOrig], '%Y:%m:%d %H:%M:%S')
+    except ValueError:
+        print Style.BRIGHT + Fore.RED + row['FileName'] + " doesn't have a proper " + tagDateTimeOrig + " tag and will be excluded" + Style.RESET_ALL
+    else:
+        file_dt.append((row['FileName'], dtobj, row[tagLong], row[tagLat]))    #add a tuple
 
 ## Remember index locations within the tuple for later
 IDX_FN = 0
@@ -207,7 +231,7 @@ while ShowMenuYN:
         ComputeFlightGroupsYN = False
 
     ## Display menu
-    print "\nNum images found: " + str(len(file_dt)) 
+    print "\nNum images found: " + Style.BRIGHT + Fore.GREEN + str(len(file_dt)) + Style.RESET_ALL
     print "Min, Median, and Max sampling interval (seconds): " + Style.BRIGHT + Fore.GREEN + str(min(timediffs[1:])) + ", " + str(median(timediffs)) + ", " + str(max(timediffs[1:])) + Style.RESET_ALL
     print "Move files into sub-" + Style.BRIGHT + Fore.CYAN + "D" + Style.RESET_ALL + "irectories by flight: " + Style.BRIGHT + Fore.GREEN + str(m2s_YN) + Style.RESET_ALL
     if m2s_YN:
@@ -244,6 +268,7 @@ while ShowMenuYN:
         print "The following pieces of the subdirectory name template will be replaced with actual values:"
         print "{FltNum}, {StartTime}, {EndTime}"
         m2s_SubdirTemplate = raw_input("New subdirectory name template: ")
+        #m2s_SubdirTemplate = raw_input("New subdirectory name template: %s" % m2s_SubdirTemplate + chr(8) * len(m2s_SubdirTemplate)) DOESNT WORK
         ComputeFlightGroupsYN = True
     elif contYN.lower() == "f":
         m2s_FirstFlightNum = int(raw_input("First flight number: "))
@@ -258,10 +283,8 @@ while ShowMenuYN:
 if m2s_YN:
     overwrite_subdir = "u"
     for i in range(len(flights)):
-        #fnSubDir = "Flt" +  "%02d" % (i + m2s_FirstFlightNum) + "_" + file_dt[flights[i][0]][IDX_DTOBJ].strftime('%H%M') + "_" + file_dt[flights[i][1]][IDX_DTOBJ].strftime('%H%M')        
         fnSubDir = flights[i][2]
         fnSubDirFullPath = os.path.join(fnInputDir, fnSubDir)
-        ##print fnSubDirFullPath + " exists: " + str(os.path.exists(fnSubDirFullPath))
         if os.path.exists(fnSubDirFullPath):
             if overwrite_subdir != "a":
                 print "Sub-directory " + fnSubDir + " already exists. Any files in it with the same name will be overwritten." 
@@ -295,12 +318,12 @@ if gdalYN and shpCreateYN:
     driver = ogr.GetDriverByName("ESRI Shapefile")
 
     for flight_info in flights:  
-
         # Create the data source
         if m2s_YN:
-            fnShp = os.path.join(fnInputDir, flight_info[2], flight_info[2] + "_" + shape_file_suffix)  
+            fnShp = os.path.join(fnInputDir, flight_info[2], flight_info[2] + shape_file_suffix)  
         else:
-            fnShp = os.path.join(fnInputDir, shape_file_suffix)  
+            fnShp = os.path.join(fnInputDir, fnInputLastDir + shape_file_suffix)  
+        print "fnShp = " + fnShp
         data_source = driver.CreateDataSource(fnShp)
 
         # Create the spatial reference, WGS84
@@ -362,10 +385,19 @@ if gdalYN and shpCreateYN:
 print Style.BRIGHT + Fore.YELLOW + "Done" + Style.RESET_ALL
 
 print "\nStill to come:"
+print "  - rename script to uav-img-sort-and-map"
+print "  - run it on multiple directories at once"
+print "  - add an option to sort jpgs and TIFF into separate folders"
+print "  - give exif_info.csv a better name (based on the template for the shapefile), or first create it in Temp space and then rename"
+print "  - additional option for where to save the shapefile (and what to name it)"
 print "  - make the filename field in the attrbitute table a hotlink to the file (?)"
-print "  - consider adding 'Make' and 'Model' tags to shapefile attribute table"
-print "  - test that the argument passed is an existing directory"
-print "  - test what happens if input dir has spaces"
+print "  - add {date} as an option to the subdirectory naming template; offer a couple of preset templates"
+print "  - option to create a leaflet.js file, or load into ArcMap"
+print "  - specify which open source license this falls under"
+print "  - add a GUI"
+print "  - consider adding 'Make', 'Model', and elevation tags to shapefile attribute table"
+print "  * test that the argument passed is an existing directory"
+print "  * test what happens if input dir has spaces"
 print "  * make a template for subfolder names, e.g., {date}_Flt{flight-num}_{flight-start-time}_{flight-end-time}_other-stuff"
 
 ##Pause the screen before closing (helpful when you run it from the 'Send To' menu)

@@ -14,14 +14,14 @@ Folder names for the flights conform to the recommended directory structure desc
 
 ## Usage
 
-The script provides the following options
+The script provides options to
 
-- whether to create subdirectories for each flight
-- whether to move or copy files into flight subdirector
-- the time interval between flights
-- whether to create point shapefiles
+- create subdirectories for each flight
+- move or copy files into flight subdirector
+- define the time interval between flights
+- create point shapefiles
 
-Options can be changed through a text menu. Enter one of the letters highlighted in blue to modify that option. 
+The script can be run from the command line, the Windows Explorer 'Send To', or any other method for launching a Python script (see also Launching the Script below). A text based menu system allows you to change options by entering one of the letters highlighted in blue. 
 
 ![command window 01](images/cmd_window01.png)
 
@@ -31,11 +31,11 @@ The script gueses which images were taken on the same flight by looking at the i
 
 ![command window 02](images/cmd_window02.png)
 
-## Testing
+## Compatibility Tests
 
 The script utilizes the *DateTimeOriginal*, *GPSLatitude*, and *GPSLongitude* tags in the header of an image file (usually jpg or tif). It should therefore work with any camera or sensor that saves these tags as part of the file. 
 
-The script has been tested with images taken from a GoPro Hero4 camera (geostamped after the flight using the drone's telemetry log, see <http://igis.ucanr.edu/Tech_Notes/Geotagging_Telemetry/>), ZenMuse X5, and Parrot Sequoia (both RGB & MSS). If it does not work for you, your camera might use different header tags. If you send us a sample photo we'll try to add the correct tags.
+The script has been tested with images taken from a ZenMuse X3, ZenMuse X5, ZenMuse XT, Parrot Sequoia (both RGB & MSS), and GoPro Hero4 camera (geostamped after the flight using the drone's telemetry log, see <http://igis.ucanr.edu/Tech_Notes/Geotagging_Telemetry/>). If it does not work for you, your camera might use different header tags. If you send us a sample photo we'll try to add the correct tags.
 
 ## Setup
 
@@ -44,7 +44,6 @@ The script is written for Python 2.7 and requires the following Python modules a
 - colorama (Python module)
 - ogr (Python module, part of gdal or osgeo)
 - exiftool (command line tool)
-
 
 ### colorama
 
@@ -78,10 +77,10 @@ This script also requires a command line utility called exiftool.
 
 ### Command Line
 
-From the command line, you can run the script like any other Python script. The script requires one argument, the name of a directory containing images.
+From the command line, you can run the script like any other Python script. The script requires one argument, the name of a directory containing images. If the directory name contain spaces, be sure to enclose it in double-quotes.
 
 ```
-c:\> python parse-uav-imgs.py 'C:\Drone_Projects\ElkusRanch\2017-06-19_X5images\'
+c:\> python parse-uav-imgs.py "C:\Drone Projects\Granger Ranch\2017-06-19 X5images"
 ```
 
 ### Send To menu (Windows)
