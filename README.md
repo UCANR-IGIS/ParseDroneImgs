@@ -33,11 +33,13 @@ The script gueses which images were taken on the same flight by looking at the i
 
 ![command window 02](images/cmd_window02.png)
 
-## Compatibility Tests
+## Compatibility and Testing
 
 The script utilizes the *DateTimeOriginal*, *GPSLatitude*, and *GPSLongitude* tags in the header of an image file (usually jpg or tif). It should therefore work with any camera or sensor that saves these tags as part of the file. 
 
 The script has been tested with images taken from a ZenMuse X3, ZenMuse X5, ZenMuse XT, Parrot Sequoia (both RGB & MSS), and GoPro Hero4 camera (geostamped after the flight using the drone's telemetry log, see <http://igis.ucanr.edu/Tech_Notes/Geotagging_Telemetry/>). If it does not work for you, your camera might use different header tags. If you send us a sample photo we'll try to add the correct tags.
+
+The script has only been tested on Windows. All of the dependencies (including Exiftool) are cross-platform, so it should work on MacOS also, but may need some modification. The script was written for Python 2.7 and has not been tested with Python 3.
 
 ## Setup
 
