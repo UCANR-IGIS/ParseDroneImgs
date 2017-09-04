@@ -17,7 +17,8 @@
 ## python parse-uav-imgs.py 'C:\Pix4D\HREC\Watershed1\Data\2017-01-17_Seq\Flight01_1321_1328_400ft\Multispec'  #Sequoia MSS 
 ## python parse-uav-imgs.py 'C:\Pix4D\HREC\HQ-Pasture\Data\HQPasture\201708017_X3b'  #X3
 ## python parse-uav-imgs.py 'C:\Pix4D\HREC\Watershed2\Data\2017-08-18_X3\Flight02_Imgs'
-## python \GitHub\ParseDroneImgs\parse-uav-imgs.py "C:\Temp\Thermal Dronnies"
+## python \GitHub\ParseDroneImgs\parse-uav-imgs.py "C:\Pix4D\Test\Test_SeqMixed"
+## python \GitHub\ParseDroneImgs\parse-uav-imgs.py "C:\Pix4D\Test\Test_SeqRGB"
 
 ## Set default options
 fnCSV = "exif_info.csv"
@@ -26,6 +27,9 @@ m2s_ThreshUnits = "multiple of median sampling interval"    # or 'seconds'
 m2s_ThreshVal = 10
 m2s_Preview = True
 m2s_MoveCopy = "move"
+m2s_DivideTifJpgYN = False
+m2s_SubDirJPG = "rgb"
+m2s_SubDirTIF = "mss"
 shpCreateYN = True
 m2s_FirstFlightNum = 1
 m2s_SubdirTemplate = "Flt{FltNum}_{StartTime}_{EndTime}"
@@ -78,6 +82,17 @@ init()
 #Back: BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, RESET
 #Style: DIM, NORMAL, BRIGHT, RESET_ALL (resets foreground, background, and brightness)
 
+## Create a function for colored text
+def coltxt(strTxt, strCol="cyan", brightYN=True):
+    dctANSI = {'black':Fore.BLACK, 'k':Fore.BLACK, 'red':Fore.RED, 'r':Fore.RED, 'green':Fore.GREEN, 'g':Fore.GREEN, 'yellow':Fore.YELLOW, 'y':Fore.YELLOW, 'blue':Fore.BLUE, 'b':Fore.BLUE, 'magenta':Fore.MAGENTA, 'm':Fore.MAGENTA, 'cyan':Fore.CYAN, 'c':Fore.CYAN, 'white':Fore.WHITE, 'w':Fore.WHITE, 'reset':Fore.RESET}
+    if strCol in dctANSI.keys():
+        return (Style.BRIGHT if brightYN else "") + dctANSI[strCol] + strTxt + Style.RESET_ALL
+    else:
+        print "color not found: " + strCol + Style.RESET_ALL
+        return ""
+
+
+
 try:
     imp.find_module('osgeo')
     gdalYN = True
@@ -103,11 +118,6 @@ def median(lst, omit_zeros=True):
 fnInputDir = sys.argv[1]
 fnInputDir = fnInputDir.strip('\'"')    # get rid of single and double quotes
 fnInputLastDir = os.path.basename(os.path.normpath(fnInputDir))
-print "Last dir = " + fnInputLastDir
-
-#print "cleaned fnInputDir = " + fnInputDir
-#print "isdir = " + str(os.path.isdir(fnInputDir))
-#print "exists = " + str(os.path.isdir(fnInputDir))
 
 ## Make sure the directory exists
 if not os.path.isdir(fnInputDir):
@@ -121,6 +131,8 @@ tagDateTimeOrig = "DateTimeOriginal"
 tagLat = "GPSLatitude"
 tagLong = "GPSLongitude"
 tagsAllForCmd = "-" + tagDateTimeOrig + " -" + tagLat + " -" + tagLong
+
+#tagsAllForCmd = tagsAllForCmd + " -filesize"
 
 ## Not used (not needed for the cameras that have been tested)
 #if camera_type == "GoPro" or camera_type == "X5":
@@ -139,14 +151,14 @@ tagsAllForCmd = "-" + tagDateTimeOrig + " -" + tagLat + " -" + tagLong
 
 print "Running exiftool on images in " + fnInputDir + "..."
 fnCSV = os.path.join(fnInputDir, fnCSV)
-strCmd = "exiftool -filename " + tagsAllForCmd + " -n -csv \"" + fnInputDir + "\" > \"" + fnCSV + "\""
-
 #strCmd = "exiftool -filename -gpsdatestamp -gpstimestamp -gpslatitude -gpslongitude -n -csv " + fnInputDir + " > " + fnCSV
-#strCmd = "exiftool -filename " + tagsAllForCmd + " -n -csv " + fnInputDir + " > " + fnCSV
+#If useful could add -filesize# and other tags (like image size), Z value
+strCmd = "exiftool -if \"$filesize# > 0\" -filename " + tagsAllForCmd + " -n -csv \"" + fnInputDir + "\" > \"" + fnCSV + "\""
+#print strCmd
 
 created_csv = call(strCmd, shell=True)
 if created_csv != 0:
-    print "Error extracting EXIF info"
+    print "Error extracting EXIF info (" + str(created_csv) + ")" 
     os.system("pause")
     quit()
 
@@ -205,50 +217,79 @@ while ShowMenuYN:
             else:
                 thresh_abs = m2s_ThreshVal
 
-            ## flights is a list containing the first and last index from file_dt, plus a constructed subdir name
+            ## OLD: flights is a list containing the first and last index from file_dt, plus a constructed subdir name
+            ## flights is a list containing lists with two elements: i) a list of indices from file_dt, and ii) constructed subdir name
             flights = []
             start_idx = 0
+            cur_flight_num = 0
             for i in range(len(file_dt)):
-                if i == (len(file_dt)-1):
-                    #subdir = "Flt" +  "%02d" % (len(flights) + m2s_FirstFlightNum) + "_" + file_dt[start_idx][IDX_DTOBJ].strftime('%H%M') + "_" + file_dt[i][IDX_DTOBJ].strftime('%H%M')
+                if i == (len(file_dt)-1) or timediffs[i] >= thresh_abs:
+                    ## Add a flight - either the last one, or the one that just ended
+                    end_idx = i-1 if timediffs[i] >= thresh_abs else i
                     subdir = m2s_SubdirTemplate                    
-                    subdir = subdir.replace("{FltNum}", "%02d" % (len(flights) + m2s_FirstFlightNum))
+                    ## subdir = subdir.replace("{FltNum}", "%02d" % (len(flights) + m2s_FirstFlightNum))
+                    subdir = subdir.replace("{FltNum}", "%02d" % (cur_flight_num + m2s_FirstFlightNum))
                     subdir = subdir.replace("{StartTime}", file_dt[start_idx][IDX_DTOBJ].strftime('%H%M'))
-                    subdir = subdir.replace("{EndTime}", file_dt[i][IDX_DTOBJ].strftime('%H%M'))
-                    flights.append([start_idx, i, subdir])
-                elif timediffs[i] >= thresh_abs:
-                    ## Start a new flight
-                    #subdir = "Flt" +  "%02d" % (len(flights) + m2s_FirstFlightNum) + "_" + file_dt[start_idx][IDX_DTOBJ].strftime('%H%M') + "_" + file_dt[i-1][IDX_DTOBJ].strftime('%H%M')
-                    subdir = m2s_SubdirTemplate                    
-                    subdir = subdir.replace("{FltNum}", "%02d" % (len(flights) + m2s_FirstFlightNum))
-                    subdir = subdir.replace("{StartTime}", file_dt[start_idx][IDX_DTOBJ].strftime('%H%M'))
-                    subdir = subdir.replace("{EndTime}", file_dt[i-1][IDX_DTOBJ].strftime('%H%M'))
-                    flights.append([start_idx, i-1, subdir])
+                    subdir = subdir.replace("{EndTime}", file_dt[end_idx][IDX_DTOBJ].strftime('%H%M'))
+                    subdir = subdir.replace("{Date}", file_dt[end_idx][IDX_DTOBJ].strftime('%Y%m%d'))
+
+                    if m2s_DivideTifJpgYN:
+                        tif_idx = []
+                        for j in range(start_idx, end_idx + 1):
+                            if file_dt[j][0].lower().endswith(".tif"):
+                                tif_idx.append(j)
+                        if len(tif_idx) > 0:
+                            flights.append([tif_idx, os.path.join(subdir, m2s_SubDirTIF)])
+                        jpg_idx = []
+                        for j in range(start_idx, end_idx + 1):
+                            if file_dt[j][0].lower().endswith(".jpg"):
+                                jpg_idx.append(j)
+                        if len(jpg_idx) > 0:
+                            flights.append([jpg_idx, os.path.join(subdir, m2s_SubDirJPG)])
+                    else:
+                        flights.append([range(start_idx, end_idx + 1), subdir])
+                    cur_flight_num = cur_flight_num + 1
                     start_idx = i
+
+                #elif timediffs[i] >= thresh_abs:
+                    ## Start a new flight
+                    #subdir = m2s_SubdirTemplate                    
+                    #subdir = subdir.replace("{FltNum}", "%02d" % (len(flights) + m2s_FirstFlightNum))
+                    #subdir = subdir.replace("{StartTime}", file_dt[start_idx][IDX_DTOBJ].strftime('%H%M'))
+                    #subdir = subdir.replace("{EndTime}", file_dt[i-1][IDX_DTOBJ].strftime('%H%M'))
+                    #subdir = subdir.replace("{Date}", file_dt[i][IDX_DTOBJ].strftime('%Y%m%d'))
+                    #flights.append([start_idx, i-1, subdir])
+                    #flights.append([range(start_idx, i), subdir])
+                    #start_idx = i
+
         else:
             # Just one 'flight'
-            flights = [[0, len(file_dt)-1, "all"]]
+            #flights = [[0, len(file_dt)-1, "all"]]
+            flights = [[range(len(file_dt)), "all"]]
         ComputeFlightGroupsYN = False
 
     ## Display menu
-    print "\nNum images found: " + Style.BRIGHT + Fore.GREEN + str(len(file_dt)) + Style.RESET_ALL
-    print "Min, Median, and Max sampling interval (seconds): " + Style.BRIGHT + Fore.GREEN + str(min(timediffs[1:])) + ", " + str(median(timediffs)) + ", " + str(max(timediffs[1:])) + Style.RESET_ALL
-    print "Move files into sub-" + Style.BRIGHT + Fore.CYAN + "D" + Style.RESET_ALL + "irectories by flight: " + Style.BRIGHT + Fore.GREEN + str(m2s_YN) + Style.RESET_ALL
+    print "\n---------------------------------------------"
+    print "Input directory: " + coltxt(fnInputDir,"g")
+    print "Num images found: " + coltxt(str(len(file_dt)),"g")
+    print "Min, Median, and Max sampling interval (seconds): " + coltxt(str(min(timediffs[1:])) + ", " + str(median(timediffs)) + ", " + str(max(timediffs[1:])),"g")
+    print "      -------------"
+    print "Move files into sub-" + coltxt("D","c") + "irectories by flight: " + coltxt(str(m2s_YN),"g")
     if m2s_YN:
         print "Flight Parsing Options:"
-        print "  Threshhold " + Style.BRIGHT + Fore.CYAN + "U" + Style.RESET_ALL + "nits: " + Style.BRIGHT + Fore.GREEN + m2s_ThreshUnits + Style.RESET_ALL
-        print "  Threshhold " + Style.BRIGHT + Fore.CYAN + "V" + Style.RESET_ALL + "al: " + Style.BRIGHT + Fore.GREEN + str(m2s_ThreshVal) + Style.RESET_ALL
+        print "  Threshhold " + coltxt("U","c") + "nits: " + coltxt(m2s_ThreshUnits,"g")
+        print "  Threshhold " + coltxt("V","c") + "al: " + coltxt(str(m2s_ThreshVal),"g")
         print "    --> will create a new flight every time a gap is found of at least " + str(thresh_abs) + " seconds"
-        print "  Subdirectory name " + Style.BRIGHT + Fore.CYAN + "T" + Style.RESET_ALL + "emplate: " + m2s_SubdirTemplate
-        print "  " + Style.BRIGHT + Fore.CYAN + "F" + Style.RESET_ALL + "irst flight number: " + str(m2s_FirstFlightNum)
+        print "  Subdirectory name " + coltxt("T","c") + "emplate: " + m2s_SubdirTemplate
+        print "  " + coltxt("F","c") + "irst flight number: " + coltxt(str(m2s_FirstFlightNum),"g")
+        print "  Se" + coltxt("P","c") + "arate JPGs and TIFs: " + coltxt(str(m2s_DivideTifJpgYN),"g")
         print "  Flight directory(s):" 
         for i in range(len(flights)):
-            print "   - " + flights[i][2]  
-            #print "   - Flt" +  "%02d" % (i + m2s_FirstFlightNum) + ": " + file_dt[flights[i][0]][IDX_DTOBJ].strftime('%H:%M:%S') + " to " + file_dt[flights[i][1]][IDX_DTOBJ].strftime('%H:%M:%S') + " (" + str(flights[i][1] - flights[i][0] + 1) + " images)"
-        print "  " + Style.BRIGHT + Fore.CYAN + "M" + Style.RESET_ALL + "ove or " + Style.BRIGHT + Fore.CYAN + "c" + Style.RESET_ALL + "opy: " + Style.BRIGHT + Fore.GREEN + m2s_MoveCopy + Style.RESET_ALL
-    print "Create point " + Style.BRIGHT + Fore.CYAN + "S" + Style.RESET_ALL + "hapefiles: " + Style.BRIGHT + Fore.GREEN + str(shpCreateYN) + Style.RESET_ALL
+            print "   - " + coltxt(flights[i][1],"g") + " (" + str(len(flights[i][0])) + ")" 
+        print "  " + coltxt("M","c") + "ove or " + coltxt("C","c") + "opy: " + coltxt(m2s_MoveCopy,"g")
+    print "Create point " + coltxt("S","c") + "hapefiles: " + coltxt(str(shpCreateYN),"g")
 
-    strPrompt = "Continue [y/n or d/u/v/f/m/c/s]? " if m2s_YN else "Continue [y/n or d/s]? "
+    strPrompt = "Continue [y/n or d/u/v/f/m/c/p/s]? " if m2s_YN else "Continue [y/n or d/s]? "
     contYN = raw_input(strPrompt)
     if contYN.lower() == "y": 
         ShowMenuYN = False
@@ -264,9 +305,12 @@ while ShowMenuYN:
         m2s_MoveCopy = "move"
     elif contYN.lower() == "s":
         shpCreateYN = not shpCreateYN
+    elif contYN.lower() == "p":
+        m2s_DivideTifJpgYN = not m2s_DivideTifJpgYN
+        ComputeFlightGroupsYN = True
     elif contYN.lower() == "t":
         print "The following pieces of the subdirectory name template will be replaced with actual values:"
-        print "{FltNum}, {StartTime}, {EndTime}"
+        print "{FltNum}, {StartTime}, {EndTime}, {Date}"
         m2s_SubdirTemplate = raw_input("New subdirectory name template: ")
         #m2s_SubdirTemplate = raw_input("New subdirectory name template: %s" % m2s_SubdirTemplate + chr(8) * len(m2s_SubdirTemplate)) DOESNT WORK
         ComputeFlightGroupsYN = True
@@ -283,8 +327,9 @@ while ShowMenuYN:
 if m2s_YN:
     overwrite_subdir = "u"
     for i in range(len(flights)):
-        fnSubDir = flights[i][2]
+        fnSubDir = flights[i][1]
         fnSubDirFullPath = os.path.join(fnInputDir, fnSubDir)
+        #print "fnSubDirFullPath: " + fnSubDirFullPath
         if os.path.exists(fnSubDirFullPath):
             if overwrite_subdir != "a":
                 print "Sub-directory " + fnSubDir + " already exists. Any files in it with the same name will be overwritten." 
@@ -294,17 +339,24 @@ if m2s_YN:
                     quit()
         else:
             print "Creating subdirectory " + fnSubDir
-            os.mkdir(fnSubDirFullPath)
+            thisdir = fnInputDir
+            for dirpart in fnSubDir.split(os.sep):
+                thisdir = os.path.join(thisdir, dirpart)
+                if not os.path.exists(thisdir):
+                    print " - going to make the directory " + thisdir
+                    os.mkdir(thisdir)
 
         if m2s_MoveCopy == "move":
             print "Moving files to " + fnSubDir + "..."
         elif m2s_MoveCopy == "copy":
             print "Copying files to " + fnSubDir + "..."
 
-        for j in range(flights[i][0], flights[i][1]+1):
+        #for j in range(flights[i][0], flights[i][1]+1):
+        for j in flights[i][0]:
             fnSrc = os.path.join(fnInputDir, file_dt[j][IDX_FN])
             fnDest = os.path.join(fnSubDirFullPath, file_dt[j][IDX_FN])
             #print str(j) + ": " + fnSrc + " ==> " + fnDest
+            print str(j) + ": " + os.path.basename(os.path.normpath(fnSrc)) + " ==> " + os.path.basename(os.path.normpath(fnDest))
             if m2s_MoveCopy == "move":
                 os.rename(fnSrc, fnDest)
             elif m2s_MoveCopy == "copy":
@@ -320,10 +372,10 @@ if gdalYN and shpCreateYN:
     for flight_info in flights:  
         # Create the data source
         if m2s_YN:
-            fnShp = os.path.join(fnInputDir, flight_info[2], flight_info[2] + shape_file_suffix)  
+            fnShp = os.path.join(fnInputDir, flight_info[1], (flight_info[1] + shape_file_suffix).replace(os.sep, "_"))  
         else:
             fnShp = os.path.join(fnInputDir, fnInputLastDir + shape_file_suffix)  
-        print "fnShp = " + fnShp
+        #print "fnShp = " + fnShp
         data_source = driver.CreateDataSource(fnShp)
 
         # Create the spatial reference, WGS84
@@ -350,7 +402,8 @@ if gdalYN and shpCreateYN:
         layer.CreateField(ogr.FieldDefn("Longitude", ogr.OFTReal))
 
         ## Add records
-        for i in range(flight_info[0], flight_info[1] + 1):
+        #for i in range(flight_info[0], flight_info[1] + 1):
+        for i in flight_info[0]:
 
             # create the feature
             feature = ogr.Feature(layer.GetLayerDefn())
@@ -386,16 +439,21 @@ print Style.BRIGHT + Fore.YELLOW + "Done" + Style.RESET_ALL
 
 print "\nStill to come:"
 print "  - rename script to uav-img-sort-and-map"
+print "  - add a GUI"
+print "  - option to project"
 print "  - run it on multiple directories at once"
-print "  - add an option to sort jpgs and TIFF into separate folders"
+print "  - option to make a MCP"
+print "  - option to recreate flight line"
 print "  - give exif_info.csv a better name (based on the template for the shapefile), or first create it in Temp space and then rename"
 print "  - additional option for where to save the shapefile (and what to name it)"
 print "  - make the filename field in the attrbitute table a hotlink to the file (?)"
-print "  - add {date} as an option to the subdirectory naming template; offer a couple of preset templates"
+print "  - offer a couple of preset subdir name templates"
 print "  - option to create a leaflet.js file, or load into ArcMap"
+print "  - option to edit m2s_SubDirJPG and m2s_SubDirTIF"
 print "  - specify which open source license this falls under"
-print "  - add a GUI"
 print "  - consider adding 'Make', 'Model', and elevation tags to shapefile attribute table"
+print "  * add {date} as an option to the subdirectory naming template; offer a couple of preset templates"
+print "  * add an option to sort jpgs and TIFF into separate folders"
 print "  * test that the argument passed is an existing directory"
 print "  * test what happens if input dir has spaces"
 print "  * make a template for subfolder names, e.g., {date}_Flt{flight-num}_{flight-start-time}_{flight-end-time}_other-stuff"

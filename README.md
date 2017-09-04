@@ -21,7 +21,7 @@ The script provides options to
 - define the time interval between flights
 - create point shapefiles
 
-The script can be run from the command line, the Windows Explorer 'Send To', or any other method for launching a Python script (see also Launching the Script below). A text based menu system allows you to change options by entering one of the letters highlighted in blue. 
+The script can be run from the command line, Windows Explorer's 'Send To', or any other method for launching a Python script (see also [Launching the Script](#launching-the-script) below). A text based menu system allows you to change options by entering one of the letters highlighted in blue. 
 
 ![command window 01](images/cmd_window01.png)
 
@@ -95,7 +95,9 @@ python C:\SomeDir\parse-uav-imgs.py %1
 
 Save the file in your system 'Send To' folder. Call it something like *ParseImgs.cmd*. If you don't know where the 'Send To' folder is, type `shell:sendto` in the address bar of Windows Explorer. You should now see the cmd file in the 'Send To' pop-up menu when you right-click on a folder in Windows Explorer.
 
+## License
 
+UAV-Image-Sort-And-Map is licensed under BSD 3-Clause License, see the LICENSE file for more details.
 
 
 
