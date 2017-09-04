@@ -10,15 +10,17 @@ This Python script automates three processes that are often the next part of the
 1. Create subfolders for each flight and move the approprite images to them
 1. Create a point Shapefile for the images taken on each flight that you can pull up in a GIS program
 
-Folder names for the flights conform to the recommended directory structure described at http://igis.ucanr.edu/Tech_Notes/Drone_Data/
+Folder names for the flights conform to the recommended directory structure described at <http://igis.ucanr.edu/Tech_Notes/Drone_Data/>
 
 ## Usage
 
-The script provides options to
+The script provides the user options to
 
 - create subdirectories for each flight
-- move or copy files into flight subdirector
+- move or copy files into subdirectories for each flight, with an additional option to separate JPGs and TIFs into separate directories (for cameras like the Parrot Sequoia)
 - define the time interval between flights
+- customize the template used to name flight subdirectories
+- specify the first flight number
 - create point shapefiles
 
 The script can be run from the command line, Windows Explorer's 'Send To', or any other method for launching a Python script (see also [Launching the Script](#launching-the-script) below). A text based menu system allows you to change options by entering one of the letters highlighted in blue. 
@@ -56,13 +58,13 @@ pip.exe install colorama
 
 ### ogr
 
-ogr is part of *GDAL* which is part of *osgeo*. The Python module is essentially a wrapper for the gdal library. Installation may not be easy. If you don't know anything at all about Python and would prefer not to learn, consider getting someone to help you.
+ogr is part of *GDAL* which is part of *osgeo*. The Python module is essentially a wrapper for the gdal library. See below for installation instructions.
 
  - <https://pythongisandstuff.wordpress.com/2016/04/13/installing-gdal-ogr-for-python-on-windows/>
  - <https://gis.stackexchange.com/questions/2276/installing-gdal-with-python-on-windows>
  - <https://sandbox.idre.ucla.edu/sandbox/tutorials/installing-gdal-for-windows>
 
-After a lot of trial and error (mostly error), the instructions in the first linked worked for me. Good luck.
+Be warned installation may not be easy. If you don't know a lot about installing Python libraries and would prefer not to learn, consider getting someone to help you. After a lot of trial and error (mostly error), the instructions in the first linked worked for me. Good luck!
 
 ### exiftool
 
@@ -73,7 +75,7 @@ This script also requires a command line utility called exiftool.
 1. Rename *exiftool(-k).exe* to *exiftool.exe*
 1. Move *exiftool.exe* to a directory on the system PATH (like c:\windows)
 
-## Launching the script
+## Launching the Script
 
 ### Command Line
 
@@ -83,7 +85,7 @@ From the command line, you can run the script like any other Python script. The 
 c:\> python parse-uav-imgs.py "C:\Drone Projects\Granger Ranch\2017-06-19 X5images"
 ```
 
-### Send To menu (Windows)
+### Launching from the Windows 'Send To' menu 
 
 An easier way to launch the script is from the 'Send To' menu that appears when you right-click on a folder in the Windows Explorer. To do this, create a file in Notepad with the following three lines (change the last line to the actual directory where you save the py file):
 
@@ -93,20 +95,11 @@ cls
 python C:\SomeDir\parse-uav-imgs.py %1
 ```
 
-Save the file in your system 'Send To' folder. Call it something like *ParseImgs.cmd*. If you don't know where the 'Send To' folder is, type `shell:sendto` in the address bar of Windows Explorer. You should now see the cmd file in the 'Send To' pop-up menu when you right-click on a folder in Windows Explorer.
+Save the file in your system 'Send To' folder. Call it something like *uav-sort-and-map.cmd*. If you don't know where the 'Send To' folder is, type `shell:sendto` in the address bar of Windows Explorer. You should now see the cmd file in the 'Send To' pop-up menu when you right-click on a folder in Windows Explorer.
+
+![send-to](images/sendto.png)
 
 ## License
 
 UAV-Image-Sort-And-Map is licensed under BSD 3-Clause License, see the LICENSE file for more details.
-
-
-
-
-
-
-
-
-
-
-
 
