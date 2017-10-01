@@ -11,14 +11,14 @@
 
 ## To run, open a command window and type:
 ## cd C:\GitHub\ParseDroneImgs
-## python parse-uav-imgs.py 'C:\Pix4D\Elkus_Ranch\Data\20170419_Hero4\Flight01_1320_1321_120ft_WaterTower\Geotagged\GeotaggedWithExif'     #GoPro
-## python parse-uav-imgs.py 'C:\Pix4D\HREC\Watershed1\Data\2017-01-16_X5\Flight02_1532_1540_400ft'             #X5 
-## python parse-uav-imgs.py 'C:\Pix4D\HREC\Watershed1\Data\2017-01-17_Seq\Flight01_1321_1328_400ft\RGB'        #Sequoia RGB
-## python parse-uav-imgs.py 'C:\Pix4D\HREC\Watershed1\Data\2017-01-17_Seq\Flight01_1321_1328_400ft\Multispec'  #Sequoia MSS 
-## python parse-uav-imgs.py 'C:\Pix4D\HREC\HQ-Pasture\Data\HQPasture\201708017_X3b'  #X3
 ## python parse-uav-imgs.py 'C:\Pix4D\HREC\Watershed2\Data\2017-08-18_X3\Flight02_Imgs'
 ## python \GitHub\ParseDroneImgs\parse-uav-imgs.py "C:\Pix4D\Test\Test_SeqMixed"
 ## python \GitHub\ParseDroneImgs\parse-uav-imgs.py "C:\Pix4D\Test\Test_SeqRGB"
+## python parse-uav-imgs.py "C:\Pix4D\DREC\OnionsSouth\Data\20170209_Sequoia\Flight01\rgb"
+
+verNum = "0.90"
+verDate = "2017-09-30"
+print "Sort-and-Map UAV Images, v" + verNum + ", " + verDate
 
 ## Set default options
 fnCSV = "exif_info.csv"
@@ -90,8 +90,6 @@ def coltxt(strTxt, strCol="cyan", brightYN=True):
     else:
         print "color not found: " + strCol + Style.RESET_ALL
         return ""
-
-
 
 try:
     imp.find_module('osgeo')
@@ -179,12 +177,31 @@ for fld in required_flds:
 file_dt = []
 for row in csvReader:
     # SourceFile, FileName, DateTimeOriginal, GPSLatitude, GPSLongitude
+    allOK = True
+    badTags = ""
+
     try:
         dtobj = datetime.strptime(row[tagDateTimeOrig], '%Y:%m:%d %H:%M:%S')
     except ValueError:
-        print Style.BRIGHT + Fore.RED + row['FileName'] + " doesn't have a proper " + tagDateTimeOrig + " tag and will be excluded" + Style.RESET_ALL
-    else:
+        badTags = badTags + tagDateTimeOrig + ", "
+        allOK = False
+
+    try:
+        x = float(row[tagLong])
+    except ValueError:
+        badTags = badTags + tagLong + ", " 
+        allOK = False
+
+    try:
+        x = float(row[tagLat])
+    except ValueError:
+        badTags = badTags + tagLat + ", " 
+        allOK = False
+
+    if allOK:
         file_dt.append((row['FileName'], dtobj, row[tagLong], row[tagLat]))    #add a tuple
+    else:
+        print Style.BRIGHT + Fore.RED + row['FileName'] + " will be excluded. Invalid EXIF tag(s): " + badTags[0:-2] + Style.RESET_ALL
 
 ## Remember index locations within the tuple for later
 IDX_FN = 0
@@ -440,9 +457,11 @@ print Style.BRIGHT + Fore.YELLOW + "Done" + Style.RESET_ALL
 print "\nStill to come:"
 print "  - rename script to uav-img-sort-and-map"
 print "  - add a GUI"
+print "  - images with missing lat or long tags should still be sorted, but just omitted from shapefile construction"
 print "  - option to project"
 print "  - run it on multiple directories at once"
 print "  - option to make a MCP"
+print "  - add Spatial Index (sbx and sbn files)"
 print "  - option to recreate flight line"
 print "  - give exif_info.csv a better name (based on the template for the shapefile), or first create it in Temp space and then rename"
 print "  - additional option for where to save the shapefile (and what to name it)"

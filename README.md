@@ -105,3 +105,6 @@ Save the file in your system 'Send To' folder. Call it something like *uav-sort-
 
 UAV-Image-Sort-And-Map is licensed under BSD 3-Clause License, see the LICENSE file for more details.
 
+## Version History
+
+0.90. First version with a number.  Added checks for missing EXIF lat and long tags.
