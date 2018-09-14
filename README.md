@@ -39,11 +39,11 @@ The script utilizes the *DateTimeOriginal*, *GPSLatitude*, and *GPSLongitude* ta
 
 The script has been tested with images taken from a ZenMuse X3, ZenMuse X5, ZenMuse XT, Parrot Sequoia (both RGB & MSS), and GoPro Hero4 camera (geostamped after the flight using the drone's telemetry log, see <http://igis.ucanr.edu/Tech_Notes/Geotagging_Telemetry/>). If it does not work for you, your camera might use different header tags. If you send us a sample photo we'll try to add the correct tags.
 
-The script has only been tested on Windows. All of the dependencies (including Exiftool) are cross-platform, so it should work on MacOS also, but may need some modification. The script was written for Python 2.7 and has not been tested with Python 3.
+The script has only been tested on Windows. All of the dependencies (including Exiftool) are cross-platform, so it should work on MacOS also, but may need some modification. The script was written for Python 3.6 (an older version for Python 2.7 is available but no longer supported).
 
 ## Setup
 
-The script is written for Python 2.7 and requires the following Python modules and third-party utilities: 
+The script is written for Python 3.5+ and requires the following Python modules and third-party utilities: 
 
 - colorama (Python module)
 - ogr (Python module, part of gdal or osgeo)
@@ -52,9 +52,8 @@ The script is written for Python 2.7 and requires the following Python modules a
 ### colorama
 
 On a Windows machine, you may be able to install *colorama* by running:
-
 ```
-cd C:\Python27\ArcGIS10.5\Scripts
+cd C:\Program Files (x86)\Python36-32\Scripts\pip.exe
 pip.exe install colorama
 ```
 
